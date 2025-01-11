@@ -76,7 +76,7 @@ func handleConn(w http.ResponseWriter, r *http.Request) {
 	player := &Player{
 		Conn: conn,
 		ID:   playerID,
-		X:    50, // Start in the middle
+		X:    50,
 		Y:    50,
 	}
 
@@ -117,7 +117,7 @@ func handleConn(w http.ResponseWriter, r *http.Request) {
 				Y:      player.Y,
 				DX:     float64(shoot.DX),
 				DY:     float64(shoot.DY),
-				Speed:  0.5,
+				Speed:  15,
 				Expiry: time.Now().Add(5 * time.Second),
 			}
 			gameState.Projectiles[projectileID] = projectile
@@ -138,12 +138,22 @@ func broadcastState() {
 		time.Sleep(16 * time.Millisecond)
 
 		gameState.Mutex.Lock()
-		state := make(map[string]map[string]float64)
-
-		// Collect all player positions
-		for id, player := range gameState.Players {
-			state[id] = map[string]float64{"x": player.X, "y": player.Y}
+		state := struct {
+			Players     map[string]Player     `json:"players"`
+			Projectiles map[string]Projectile `json:"projectiles"`
+		}{
+			Players:     make(map[string]Player),
+			Projectiles: make(map[string]Projectile),
 		}
+
+		for id, player := range gameState.Players {
+			state.Players[id] = *player
+		}
+
+		for id, projectile := range gameState.Projectiles {
+			state.Projectiles[id] = *projectile
+		}
+
 		gameState.Mutex.Unlock()
 
 		// Send the state to all players
