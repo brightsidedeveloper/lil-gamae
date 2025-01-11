@@ -91,6 +91,7 @@ func handleConn(w http.ResponseWriter, r *http.Request) {
 	err = conn.WriteJSON(map[string]string{"id": playerID})
 	if err != nil {
 		log.Println("Error sending player ID:", err)
+		delete(gameState.Players, player.ID)
 		return
 	}
 
@@ -160,6 +161,7 @@ func broadcastState() {
 		for _, player := range gameState.Players {
 			err := player.Conn.WriteJSON(state)
 			if err != nil {
+				delete(gameState.Players, player.ID)
 				log.Println("Error broadcasting state:", err)
 			}
 		}
@@ -199,3 +201,5 @@ func main() {
 		log.Fatal("Server error:", err)
 	}
 }
+
+// ipconfig getifaddr en0
