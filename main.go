@@ -15,6 +15,7 @@ type Player struct {
 	ID   string  `json:"id"`
 	X    float64 `json:"x"`
 	Y    float64 `json:"y"`
+	Dead bool    `json:"dead"`
 	Conn *websocket.Conn
 }
 
@@ -155,6 +156,13 @@ func broadcastState() {
 			state.Projectiles[id] = *projectile
 		}
 
+		stillAlive := 0
+		for _, player := range gameState.Players {
+			if !player.Dead {
+				stillAlive++
+			}
+		}
+
 		gameState.Mutex.Unlock()
 
 		// Send the state to all players
@@ -164,6 +172,17 @@ func broadcastState() {
 				delete(gameState.Players, player.ID)
 				log.Println("Error broadcasting state:", err)
 			}
+		}
+
+		if stillAlive == 1 {
+			gameState.Mutex.Lock()
+			time.Sleep(3 * time.Second)
+			for _, player := range gameState.Players {
+				player.Dead = false
+				player.X = 50
+				player.Y = 50
+			}
+			gameState.Mutex.Unlock()
 		}
 	}
 }
@@ -183,6 +202,16 @@ func updateProjectiles() {
 			// Move projectile
 			proj.X += proj.DX * proj.Speed
 			proj.Y += proj.DY * proj.Speed
+			for _, player := range gameState.Players {
+				if player.ID == proj.Owner {
+					continue
+				}
+				if player.X-40 < proj.X && proj.X < player.X+40 && player.Y-40 < proj.Y && proj.Y < player.Y+40 {
+					delete(gameState.Projectiles, id)
+					player.Dead = true
+					break
+				}
+			}
 		}
 
 		gameState.Mutex.Unlock()
